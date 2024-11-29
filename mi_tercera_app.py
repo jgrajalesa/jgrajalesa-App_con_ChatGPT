@@ -75,11 +75,3 @@ if tipo_reporte == "Mensual":
         st.success(f"¡Felicidades! Has alcanzado tu meta de ahorro. Excedente: ${diferencia - meta_ahorro:.2f}")
     else:
         st.warning(f"Te faltan ${meta_ahorro - diferencia:.2f} para alcanzar tu meta.")
-
----
-
-### **Cómo ejecutar la aplicación**
-
-1. Instala **Streamlit** si aún no lo tienes:
-   ```bash
-   pip install streamlit
