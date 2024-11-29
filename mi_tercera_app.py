@@ -1,68 +1,85 @@
 import streamlit as st
 import pandas as pd
-import datetime
+import datetime as dt
+
+# Inicializar datos
+if "data" not in st.session_state:
+    st.session_state.data = pd.DataFrame(columns=["Fecha", "Categoría", "Monto", "Tipo", "Descripción"])
+
+# Función para agregar registros
+def agregar_registro(fecha, categoria, monto, tipo, descripcion):
+    nuevo_registro = {"Fecha": fecha, "Categoría": categoria, "Monto": monto, "Tipo": tipo, "Descripción": descripcion}
+    st.session_state.data = pd.concat([st.session_state.data, pd.DataFrame([nuevo_registro])], ignore_index=True)
 
 # Título de la app
-st.title("Registro de Finanzas Personales")
+st.title("💰 Registro de Finanzas Personales")
 
-# Función para calcular las diferencias entre lo presupuestado y lo real
-def calcular_diferencia(presupuestado, real):
-    return real - presupuestado
+# Sección para agregar registros
+st.header("Agregar Registro")
+with st.form("registro_form"):
+    fecha = st.date_input("Fecha", dt.date.today())
+    categoria = st.selectbox("Categoría", ["Alimentos", "Transporte", "Entretenimiento", "Ahorro", "Otros"])
+    monto = st.number_input("Monto", min_value=0.0, step=0.01)
+    tipo = st.radio("Tipo", ["Ingreso", "Gasto"])
+    descripcion = st.text_area("Descripción")
+    enviado = st.form_submit_button("Agregar")
+    if enviado:
+        agregar_registro(fecha, categoria, monto, tipo, descripcion)
+        st.success("Registro agregado correctamente.")
 
-# Crear una base de datos de ejemplo (en una implementación real, esta podría ser una base de datos)
-if 'registro' not in st.session_state:
-    st.session_state['registro'] = pd.DataFrame(columns=["Fecha", "Categoría", "Presupuesto", "Real", "Tipo"])
-
-# Formulario para ingresar presupuesto y gastos
-with st.form(key="finanzas_form"):
-    fecha = st.date_input("Fecha", value=datetime.date.today())
-    categoria = st.selectbox("Categoría", ["Ingreso", "Gasto", "Meta de Ahorro"])
-    presupuesto = st.number_input("Presupuesto", min_value=0.0, step=0.01)
-    real = st.number_input("Real", min_value=0.0, step=0.01)
-    tipo = st.selectbox("Tipo de transacción", ["Ingreso", "Gasto", "Meta de Ahorro"])
-    
-    submit_button = st.form_submit_button("Registrar")
-    
-    # Al presionar el botón de registrar, se añade al registro
-    if submit_button:
-        # Agregar los datos a la sesión de registro
-        st.session_state['registro'] = st.session_state['registro'].append({
-            "Fecha": fecha,
-            "Categoría": categoria,
-            "Presupuesto": presupuesto,
-            "Real": real,
-            "Tipo": tipo
-        }, ignore_index=True)
-        st.success("Registro agregado exitosamente.")
-
-# Mostrar el registro de finanzas
-st.write("### Registro de Finanzas")
-st.dataframe(st.session_state['registro'])
-
-# Reporte de diferencias
-st.write("### Reporte de Diferencias")
-# Filtrar por semana y mes
-fecha_inicio_semana = datetime.date.today() - datetime.timedelta(days=datetime.date.today().weekday())  # inicio de la semana
-fecha_inicio_mes = datetime.date.today().replace(day=1)  # inicio del mes
-
-# Filtrar el registro por semana y mes
-registro_semana = st.session_state['registro'][st.session_state['registro']['Fecha'] >= fecha_inicio_semana]
-registro_mes = st.session_state['registro'][st.session_state['registro']['Fecha'] >= fecha_inicio_mes]
-
-# Calcular las diferencias para la semana y el mes
-diferencia_semana = registro_semana['Real'] - registro_semana['Presupuesto']
-diferencia_mes = registro_mes['Real'] - registro_mes['Presupuesto']
-
-# Mostrar los reportes
-st.write(f"**Diferencias de la Semana (del {fecha_inicio_semana} en adelante):**")
-st.write(f"Diferencia Total de la Semana: {diferencia_semana.sum():.2f}")
-st.write(f"**Diferencias del Mes (del {fecha_inicio_mes} en adelante):**")
-st.write(f"Diferencia Total del Mes: {diferencia_mes.sum():.2f}")
-
-# Mostrar un resumen de metas de ahorro (si existe alguna meta)
-st.write("### Resumen de Metas de Ahorro")
-metas_ahorro = st.session_state['registro'][st.session_state['registro']['Tipo'] == "Meta de Ahorro"]
-if not metas_ahorro.empty:
-    st.dataframe(metas_ahorro)
+# Mostrar registros
+st.header("Registros actuales")
+if not st.session_state.data.empty:
+    st.dataframe(st.session_state.data)
 else:
-    st.write("No tienes metas de ahorro registradas.")
+    st.write("No hay registros aún.")
+
+# Generar reportes
+st.header("📊 Reportes")
+tipo_reporte = st.selectbox("Selecciona el tipo de reporte", ["Semanal", "Mensual"])
+
+if not st.session_state.data.empty:
+    hoy = dt.date.today()
+    if tipo_reporte == "Semanal":
+        inicio_semana = hoy - dt.timedelta(days=hoy.weekday())
+        fin_semana = inicio_semana + dt.timedelta(days=6)
+        reporte = st.session_state.data[
+            (st.session_state.data["Fecha"] >= inicio_semana) & (st.session_state.data["Fecha"] <= fin_semana)
+        ]
+        st.subheader(f"Reporte semanal ({inicio_semana} - {fin_semana})")
+    elif tipo_reporte == "Mensual":
+        inicio_mes = hoy.replace(day=1)
+        fin_mes = (inicio_mes + pd.DateOffset(months=1) - pd.DateOffset(days=1)).date()
+        reporte = st.session_state.data[
+            (st.session_state.data["Fecha"] >= inicio_mes) & (st.session_state.data["Fecha"] <= fin_mes)
+        ]
+        st.subheader(f"Reporte mensual ({inicio_mes} - {fin_mes})")
+
+    if not reporte.empty:
+        ingresos = reporte[reporte["Tipo"] == "Ingreso"]["Monto"].sum()
+        gastos = reporte[reporte["Tipo"] == "Gasto"]["Monto"].sum()
+        st.write(f"Total de ingresos: ${ingresos:.2f}")
+        st.write(f"Total de gastos: ${gastos:.2f}")
+        st.write(f"Diferencia: ${ingresos - gastos:.2f}")
+    else:
+        st.write("No hay registros para este período.")
+else:
+    st.write("No hay datos para generar reportes.")
+
+# Sección para metas de ahorro
+st.header("🎯 Metas de ahorro")
+meta_ahorro = st.number_input("Define tu meta de ahorro mensual ($)", min_value=0.0, step=0.01)
+if tipo_reporte == "Mensual":
+    diferencia = ingresos - gastos
+    if diferencia >= meta_ahorro:
+        st.success(f"¡Felicidades! Has alcanzado tu meta de ahorro. Excedente: ${diferencia - meta_ahorro:.2f}")
+    else:
+        st.warning(f"Te faltan ${meta_ahorro - diferencia:.2f} para alcanzar tu meta.")
+
+---
+
+### **Cómo ejecutar la aplicación**
+
+1. Instala **Streamlit** si aún no lo tienes:
+   ```bash
+   pip install streamlit
