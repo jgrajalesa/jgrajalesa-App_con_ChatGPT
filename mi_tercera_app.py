@@ -58,20 +58,21 @@ if not st.session_state.data.empty:
     if not reporte.empty:
         ingresos = reporte[reporte["Tipo"] == "Ingreso"]["Monto"].sum()
         gastos = reporte[reporte["Tipo"] == "Gasto"]["Monto"].sum()
+        diferencia = ingresos - gastos
         st.write(f"Total de ingresos: ${ingresos:.2f}")
         st.write(f"Total de gastos: ${gastos:.2f}")
-        st.write(f"Diferencia: ${ingresos - gastos:.2f}")
+        st.write(f"Diferencia: ${diferencia:.2f}")
     else:
         st.write("No hay registros para este período.")
+        diferencia = 0  # Asegurarse de que diferencia esté definida aunque no haya registros
 else:
     st.write("No hay datos para generar reportes.")
+    diferencia = 0
 
 # Sección para metas de ahorro
 st.header("🎯 Metas de ahorro")
 meta_ahorro = st.number_input("Define tu meta de ahorro mensual ($)", min_value=0.0, step=0.01)
-if tipo_reporte == "Mensual":
-    diferencia = ingresos - gastos
-    if diferencia >= meta_ahorro:
-        st.success(f"¡Felicidades! Has alcanzado tu meta de ahorro. Excedente: ${diferencia - meta_ahorro:.2f}")
-    else:
-        st.warning(f"Te faltan ${meta_ahorro - diferencia:.2f} para alcanzar tu meta.")
+if diferencia >= meta_ahorro:
+    st.success(f"¡Felicidades! Has alcanzado tu meta de ahorro. Excedente: ${diferencia - meta_ahorro:.2f}")
+else:
+    st.warning(f"Te faltan ${meta_ahorro - diferencia:.2f} para alcanzar tu meta.")
